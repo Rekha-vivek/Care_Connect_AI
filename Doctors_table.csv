@@ -1,0 +1,7 @@
+Doctor_id,Name,Specialization,Available_time
+D001,Dr.Kumar,General Physician ,3:00 PM
+D002,Dr.Mehta,Cardiologist,11:30 AM
+D003,Dr.Priya,Neurologist,2:00 PM
+D004,Dr.Raj,Gastroenterologist,4:00 PM
+D005,Dr.Roopa,Pulmonologist,11:00 AM
+D006,Dr.Vivek,Orthologist,10:30 AM

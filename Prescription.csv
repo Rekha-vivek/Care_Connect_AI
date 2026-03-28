@@ -1,0 +1,4 @@
+Prescription_id,Patient_id,Doctor_id,Medicine,Dosage,Date
+PR001,P001,D001,Paracetamol,500mg,22-03-2026
+PR002,P002,D002,Metformin,850mg,23-03-2026
+PR003,P003,D003,Ibuprofen,400mg,24-03-2026

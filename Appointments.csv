@@ -1,0 +1,4 @@
+Appointment_id,Patient_id,Doctor_id,Date,Status
+A001,P001,D001,22-03-2026,Scheduled
+A002,P002,D002,23-03-2026,Completed
+A003,P003,D003,24-03-2026,Scheduled

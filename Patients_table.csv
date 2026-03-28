@@ -1,0 +1,11 @@
+Patient_id,User_id,Age,Gender,Blood_group,Allergies,Medical_history
+P001,U001,25,Male,B+,None,Fever
+P002,U002,40,Female,O+,Penicillin,Diabetes
+P003,U003,35,Male,A+,Dust,Headache
+P004,U004,29,Female,B-,None,Stomach Pain
+P005,U005,50,Male,O-,None,Hypertension
+P006,U006,60,Female,A+,None,Arthritis
+P007,U007,45,Male,B+,None,Diabetes
+P008,U008,30,Female,O+,Dust,Allergy
+P009,U009,55,Male,AB+,None,Heart Disease
+P010,U010,28,Female,B-,None,Fever
