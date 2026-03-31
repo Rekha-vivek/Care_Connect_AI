@@ -9,6 +9,7 @@ def create_tables():
     conn = create_connection()
     cursor = conn.cursor()
 
+
     # Users Table
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS users (

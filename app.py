@@ -1,8 +1,8 @@
 import streamlit as st
 import pandas as pd
-from backend import view_doctors, book_appointment, get_patient, add_vitals,get_vitals_history
-from chatbot import chatbot_response
+from backend import view_doctors,book_appointment, get_patient,add_vitals,get_vitals_history
 from backend import predict_risk
+from chatbot import chatbot_response
 
 st.set_page_config(
     page_title="CareConnect AI",
@@ -13,50 +13,104 @@ st.set_page_config(
 st.markdown("""
 <style>
 
-/* Background */
+/* MAIN BACKGROUND */
 [data-testid="stAppViewContainer"] {
-    background: linear-gradient(to right, #e3f2fd, #ffffff);
-}
-
-/* Sidebar */
-[data-testid="stSidebar"] {
-    background: linear-gradient(to bottom, #0f2027, #203a43, #2c5364);
+    background-color: #0e1117;
     color: white;
 }
 
-/* Titles */
-h1, h2, h3 {
-    color: #0d47a1;
-    font-weight: bold;
+/* SIDEBAR */
+[data-testid="stSidebar"] {
+    background: #1a1c23;
 }
 
-/* Buttons */
+/* SIDEBAR TEXT */
+[data-testid="stSidebar"] * {
+    color: white!important;
+}
+            
+/* MAIN TEXT ONLY */
+[data-testid="stAppViewContainer"] {
+    color: white;
+}
+
+/* LABELS */
+label {
+    color: white !important;
+}
+
+/* HEADINGS */
+h1, h2, h3 {
+    color: #c77dff !important;
+}
+
+/* SELECT BOX (Navigation) */
+div[data-baseweb="select"] > div {
+    background-color: #7b2cbf !important;
+    color: white !important;
+    border-radius: 10px;
+}
+
+/* INPUT BOXES */
+input, textarea {
+    background-color: #1e1e2f !important;
+    color: white !important;
+    border: 1px solid #7b2cbf !important;
+}
+
+/* BUTTON */
 .stButton>button {
-    background-color: #0d47a1;
+    background-color: #9d4edd;
     color: white;
     border-radius: 10px;
     height: 3em;
-    width: 100%;
     font-size: 16px;
 }
 
-/* Success box */
+/* BUTTON HOVER */
+.stButton>button:hover {
+    background-color: #c77dff;
+    transform: scale(1.05);
+}
+
+/* HEADINGS */
+h1, h2, h3 {
+    color: #c77dff;
+}
+
+/* CARD STYLE */
+.card {
+    background-color: #1e1e2f;   /* dark card */
+    color:#1e1e2f;
+    padding: 10px;
+    border-radius: 15px;
+    box-shadow: 0px 4px 20px rgba(0,0,0,0.5);
+    margin-bottom: 20px;
+}
+
+/* SUCCESS */
 .stSuccess {
-    background-color: #e8f5e9;
-    border-radius: 10px;
+    background-color: #1b5e20 !important;
+    color: white;
 }
 
-/* Warning */
+/* WARNING */
 .stWarning {
-    background-color: #fff3e0;
-    border-radius: 10px;
+    background-color: #ff6f00 !important;
+    color: white;
 }
 
-/* Error */
+/* ERROR */
 .stError {
-    background-color: #ffebee;
-    border-radius: 10px;
+    background-color: #b71c1c !important;
+    color: white;
 }
+            
+/* REMOVE TOP WHITE BAR */
+header {
+    visibility: hidden;
+}
+
 
 </style>
 """, unsafe_allow_html=True)
@@ -67,20 +121,63 @@ st.markdown("""
 <hr>
 """, unsafe_allow_html=True)
 
+
 menu = ["Chatbot", "View Doctors", "Book Appointment", "Add Vitals","Dashboard","Patient Details","Prescriptions","Upload Report"]
 choice = st.sidebar.selectbox("Select Option", menu)
-#CHATBOT
+
+# CHATBOT
 if choice == "Chatbot":
-    st.subheader("🤖 AI Health Assistant")
+
+    st.subheader("🧠 AI Health Assistant")
 
     user_input = st.text_area("Describe your symptoms:")
 
+    # 👉 Store response
+    if "chat_response" not in st.session_state:
+        st.session_state.chat_response = None
+
+    # 🔥 First button
     if st.button("Get Suggestion"):
+
         if user_input.strip() == "":
             st.warning("Please enter symptoms")
+
         else:
-            response = chatbot_response(user_input)
-            st.success(response)
+            st.session_state.chat_response = chatbot_response(user_input)
+
+    # 👉 SHOW RESPONSE AFTER BUTTON CLICK
+    if st.session_state.chat_response:
+
+        response = st.session_state.chat_response
+
+        st.success(response["message"])
+
+        if response.get("doctor"):
+
+            # 🔥 SECOND BUTTON (NOW WORKS)
+            if st.button(f"Book Appointment with {response['doctor']}"):
+
+                import datetime
+                import random
+
+                doctor_map = {
+                    "General Physician": "D001",
+                    "Cardiologist": "D002",
+                    "Neurologist": "D003",
+                    "Orthopedic": "D004",
+                    "Gastroenterologist": "D005"
+                }
+
+                appointment_id = "A" + str(random.randint(100, 999))
+                patient_id = "P001"
+                doctor_id = doctor_map.get(response["doctor"], "D001")
+                date = datetime.date.today()
+
+                book_appointment(appointment_id, patient_id, doctor_id, date)
+
+                st.success("✅ Appointment booked successfully!")
+                st.write(f"Doctor: {response['doctor']}")
+                st.write(f"Date: {date}")
 
 #VIEW DOCTORS
 elif choice == "View Doctors":
@@ -90,6 +187,8 @@ elif choice == "View Doctors":
 
     df = pd.DataFrame(doctors, columns=["Doctor ID","Name","Specialization","Available Time"])
     st.dataframe(df, use_container_width=True)
+
+    st.markdown('</div>', unsafe_allow_html=True)
 
 #BOOK APPOINTMENTS
 elif choice == "Book Appointment":
@@ -116,11 +215,10 @@ elif choice == "Book Appointment":
 elif choice == "Add Vitals":
 
     st.markdown("""
-    <div style='padding:20px; background-color:white; border-radius:15px; 
-    box-shadow:0px 4px 10px rgba(0,0,0,0.1);'>
-    <h2>❤️ Add Patient Vitals</h2>
-    </div>
-    """, unsafe_allow_html=True)
+<div style='padding:1px; background-color:#dfe391; border-radius:10px;'>
+<h2 style='font-size:20px; color:#c77dff;'>❤️ Add Patient Vitals</h2>
+</div>
+""", unsafe_allow_html=True)
 
     col1, col2 = st.columns(2)
 
@@ -147,7 +245,6 @@ elif choice == "Add Vitals":
             add_vitals(patient_id, temperature, bp, pulse)
 
             st.success("✅ Vitals added successfully!")
-            st.balloons()
 
             # 🔥 AI RISK
             risk = predict_risk(temperature, bp, pulse)
@@ -262,7 +359,7 @@ elif choice == "Prescriptions":
     st.subheader("💊 Add Prescription")
 
     patient_id = st.text_input("Patient ID", key="pres_patient")
-    doctor_id = st.text_input("Doctor ID", key="pres_doc")
+    doctor_id = st.text_input("Doctor ID",  value=st.session_state.get("suggested_doctor", ""))
     medicine = st.text_input("Medicine", key="pres_med")
     dosage = st.text_input("Dosage", key="pres_dosage")
     date = st.date_input("Date", key="pres_date")
