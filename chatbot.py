@@ -1,26 +1,84 @@
 from nlp_engine import process_input
 
 def chatbot_response(user_input):
+
     result = process_input(user_input)
 
-    intent = result["intent"]
-    symptom = result["entities"].get("symptom")
+    intent = result.get("intent")
+    entities = result.get("entities", {})
+    symptom = entities.get("symptom")
 
-    if intent == "symptom_check":
-        if not symptom:
-            return "Please clearly mention your symptoms"
+    user_input = user_input.lower()
 
-    elif symptom == "fever":
-        return "You may have fever. Consult General Physician."
+    # 🔥 Smart keyword detection
+    keywords = {
+         "fever": ["fever", "high temperature", "hot body"],
+         "headache": ["headache", "head pain", "migraine"],
+         "chest pain": ["chest pain", "tight chest", "heart pain"],
+         "cough": ["cough", "dry cough"],
+         "stomach pain": ["stomach", "abdominal", "gas pain"],
+         "back pain": ["back pain", "backpain", "spine pain"],
+         "fatigue": ["tired", "fatigue", "weak", "no energy"],
+         }
+
+    if not symptom:
+        for key, words in keywords.items():
+            for word in words:
+                if word in user_input:
+                    symptom = key
+                    break
+
+    # 🚀 Smart Responses
+    if symptom == "fever":
+        return {
+        "message": "🤒 You may have fever.",
+        "doctor": "General Physician"
+    }
 
     elif symptom == "headache":
-        return "Possible migraine. Consult Neurologist."
-
+        return {
+        "message":"head ache detected.",
+        "doctor":"Neurologist"
+    }
+  
     elif symptom == "chest pain":
-        return "Consult Cardiologist immediately."
+        return {
+        "message": "🚨 Serious chest pain!",
+        "doctor": "Cardiologist"
+    }
 
     elif symptom == "cough":
-        return "Possible infection. Consult General Physician."
+        return {
+        "message": "cough detected.",
+        "doctor": "General Physician"
+         }
+  
+    elif symptom == "stomach pain":
+        return {
+        "message": "stomach ache detected.",
+        "doctor":"Gastroenterologist "
+         }
 
+    elif symptom == "backpain":
+         return {
+        "message": "🩻 Back pain detected.",
+        "doctor": "Orthopedic"
+         }
+    
+    elif symptom == "fatigue":
+        return {
+        "message": "fatigue detected.",
+        "doctor": "General Physician"
+         }
+  
+    elif symptom:
+         return {
+            "message": f"⚠️ Detected symptom: {symptom}. Please consult a doctor.",
+            "doctor": "General Physician"
+        }
+    
     else:
-        return "Please provide more details"
+        return {
+        "message": "🤖 Could not understand",
+        "doctor": None
+    }
