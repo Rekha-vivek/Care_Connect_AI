@@ -1,0 +1,6 @@
+Discharge_id,Patient_id,Doctor_id,Summary_text,Created_at,Signed_at
+DSC001,P001,UD001,3-day observation fever treated follow-up in 5 days,2026-03-21 18:00:00,2026-03-21 18:10:00
+DSC002,P002,UD002,Cardiac issue stabilized medication prescribed,2026-03-22 10:00:00,2026-03-22 10:15:00
+DSC003,P003,UD003,Migraine treated advised rest and hydration,2026-03-22 11:30:00,2026-03-22 11:45:00
+DSC004,P004,UD004,Acidity controlled diet changes recommended,2026-03-23 09:00:00,2026-03-23 09:10:00
+DSC005,P008,UD006,Lung infection treated antibiotics prescribed,2026-03-23 12:00:00,2026-03-23 12:15:00

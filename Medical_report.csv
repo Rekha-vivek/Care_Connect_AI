@@ -1,0 +1,6 @@
+Report_id,Patient_id,Uploaded_by,Report_type,File_url,Extracted_text,Uploaded_at
+RPT001,P001,UD005,Lab,s3://hospital/reports/P001/blood_test1.pdf,CBC: WBC 6200 RBC 4.5M Normal,2026-03-21 11:00:00
+RPT002,P002,UD005,X-ray,s3://hospital/reports/P002/chest_xray.pdf,Mild infection in lungs,2026-03-21 11:15:00
+RPT003,P003,UD005,MRI,s3://hospital/reports/P003/brain_mri.pdf,No abnormalities detected,2026-03-21 11:30:00
+RPT004,P004,UD005,Lab,s3://hospital/reports/P004/sugar_test.pdf,High glucose level detected,2026-03-21 11:45:00
+RPT005,P008,UD005,CT Scan,s3://hospital/reports/P008/ct_scan.pdf,Lung inflammation observed,2026-03-21 12:00:00

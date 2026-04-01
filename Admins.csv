@@ -1,0 +1,6 @@
+Log_id,User_id,Action,Target_entity,Timestamp,Details
+LOG001,UD020,Checked inventory,Inventory,2026-03-21 21:00:00,Checked paracetamol stock levels
+LOG002,UD020,Updated schedule,Doctor,2026-03-21 21:10:00,Adjusted Dr.Kumar availability
+LOG003,UD020,Viewed patient data,Patient,2026-03-21 21:20:00,Accessed records of P001
+LOG004,UD020,Generated report,Reports,2026-03-21 21:30:00,Created daily patient summary
+LOG005,UD020,Updated inventory,Inventory,2026-03-21 21:40:00,Added 500 units of medicine stock
