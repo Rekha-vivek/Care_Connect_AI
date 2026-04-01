@@ -2,3 +2,7 @@ Prescription_id,Patient_id,Doctor_id,Medicine,Dosage,Date
 PR001,P001,D001,Paracetamol,500mg,22-03-2026
 PR002,P002,D002,Metformin,850mg,23-03-2026
 PR003,P003,D003,Ibuprofen,400mg,24-03-2026
+PR004,P004,D004,Omeprazole,20mg,26-03-2026
+PR005,P008,D006,Cyclobenzaprine,10mg,29-03-2026
+PR006,P010,D005,Mucinex,600mg,29-03-2026
+PR007,P004,D004,None,None,26-03-2026
