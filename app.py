@@ -1,8 +1,11 @@
 import streamlit as st
 import pandas as pd
-from backend import view_doctors,book_appointment, get_patient,add_vitals,get_vitals_history
-from backend import predict_risk
-from chatbot import chatbot_response
+import datetime
+import random
+from chatbot import final_prediction
+from ocr import extract_text_from_image
+from rag import get_patient_history
+from backend import view_doctors,book_appointment
 
 st.set_page_config(
     page_title="CareConnect AI",
@@ -122,7 +125,8 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 
-menu = ["Chatbot", "View Doctors", "Book Appointment", "Add Vitals","Dashboard","Patient Details","Prescriptions","Upload Report"]
+menu = ["Chatbot", "View Doctors", "Book Appointment", "Add Vitals","Dashboard","Patient Details","Prescriptions","Upload Report", "Medical Reports",        # ✅ NEW
+    "Discharge Summary","Admin Panel"]  
 choice = st.sidebar.selectbox("Select Option", menu)
 
 # CHATBOT
@@ -138,12 +142,12 @@ if choice == "Chatbot":
 
     # 🔥 First button
     if st.button("Get Suggestion"):
-
-        if user_input.strip() == "":
-            st.warning("Please enter symptoms")
-
-        else:
-            st.session_state.chat_response = chatbot_response(user_input)
+      
+      if user_input.strip() == "":
+        st.warning("Please enter symptoms")
+      else:
+        result = final_prediction(user_input)
+        st.success(result)
 
     # 👉 SHOW RESPONSE AFTER BUTTON CLICK
     if st.session_state.chat_response:
@@ -161,16 +165,16 @@ if choice == "Chatbot":
                 import random
 
                 doctor_map = {
-                    "General Physician": "D001",
-                    "Cardiologist": "D002",
-                    "Neurologist": "D003",
-                    "Orthopedic": "D004",
-                    "Gastroenterologist": "D005"
+                    "General Physician":"UD001",
+                    "Cardiologist":"UD002",
+                    "Neurologist":"UD003",
+                    "Orthopedic":"UD004",
+                    "Gastroenterologist":"UD005"
                 }
 
                 appointment_id = "A" + str(random.randint(100, 999))
                 patient_id = "P001"
-                doctor_id = doctor_map.get(response["doctor"], "D001")
+                doctor_id = doctor_map.get(response["doctor"], "UD001")
                 date = datetime.date.today()
 
                 book_appointment(appointment_id, patient_id, doctor_id, date)
@@ -181,54 +185,137 @@ if choice == "Chatbot":
 
 #VIEW DOCTORS
 elif choice == "View Doctors":
-    st.header("Available Doctors")
+
+    st.header("👨‍⚕️ Available Doctors")
 
     doctors = view_doctors()
 
-    df = pd.DataFrame(doctors, columns=["Doctor ID","Name","Specialization","Available Time"])
-    st.dataframe(df, use_container_width=True)
+    # Convert to DataFrame
+    df = pd.DataFrame(doctors, columns=[
+        "Doctor ID", "Name", "Specialization", "Available Time"
+    ])
 
-    st.markdown('</div>', unsafe_allow_html=True)
+    if df.empty:
+        st.warning("No doctors available")
+    else:
+
+        # 🔍 FILTER OPTION (NEW)
+        specialization = st.selectbox(
+            "Filter by Specialization",
+            ["All"] + sorted(df["Specialization"].unique().tolist())
+        )
+
+        if specialization != "All":
+            df = df[df["Specialization"] == specialization]
+
+        # 🔍 SEARCH OPTION (NEW)
+        search = st.text_input("Search Doctor by Name")
+
+        # 📊 SHOW TABLE
+        st.dataframe(df, use_container_width=True)
+
+        # 🎯 SELECT DOCTOR
+        selected = st.selectbox("Select Doctor", df["Name"])
+
+        if selected:
+            doc = df[df["Name"] == selected].iloc[0]
+
+            st.success(f"""
+            👨‍⚕️ Doctor Selected: {doc['Name']}
+            🩺 Specialization: {doc['Specialization']}
+            ⏰ Available Time: {doc['Available Time']}
+            """)
+
+            # 🔥 QUICK BOOK BUTTON
+            if st.button("Book Appointment"):
+
+                import datetime
+                import random
+
+                appointment_id = "A" + str(random.randint(100, 999))
+                patient_id = "P001"
+                doctor_id = doc["Doctor ID"]
+                date = datetime.date.today()
+
+                from backend import book_appointment
+                book_appointment(appointment_id, patient_id, doctor_id, str(date))
+
+                st.success("✅ Appointment booked successfully!")
 
 #BOOK APPOINTMENTS
 elif choice == "Book Appointment":
+
     st.subheader("📅 Book Appointment")
 
-    col1, col2 = st.columns(2)
+    doctors = view_doctors()
+    if not doctors:
+        st.warning("No doctors available")
+    else:
+        df = pd.DataFrame(doctors, columns=[
+            "Doctor ID", "Name", "Specialization", "Available Time"
+        ])
 
-    with col1:
-        appointment_id = st.text_input("Appointment ID")
-        patient_id = st.text_input("Patient ID")
+        col1, col2 = st.columns(2)
 
-    with col2:
-        doctor_id = st.text_input("Doctor ID")
-        date = st.date_input("Select Date")
+        with col1:
+            patient_id = st.text_input("Patient ID")
 
-    if st.button("Book Appointment"):
-        if appointment_id and patient_id and doctor_id:
-            book_appointment(appointment_id, patient_id, doctor_id, str(date))
-            st.success("✅ Appointment booked successfully!")
-        else:
-            st.error("Please fill all fields")
+        with col2:
+            selected_doc = st.selectbox(
+                "Select Doctor",
+                df["Name"]
+            )
 
-# ADD VITALS
+        # Get doctor details
+        doc_row = df[df["Name"] == selected_doc].iloc[0]
+        doctor_id = doc_row["Doctor ID"]
+
+        st.info(f"🩺 {doc_row['Specialization']}")
+        st.info(f"⏰ {doc_row['Available Time']}")
+
+        # Date + Time (IMPORTANT CHANGE)
+        scheduled_time = st.datetime_input("Select Date & Time")
+
+        appointment_id = "A" + str(random.randint(1000, 9999))
+
+        if st.button("Book Appointment"):
+
+            if not patient_id:
+                st.error("Enter patient ID")
+
+            else:
+                book_appointment(
+                    appointment_id,
+                    patient_id,
+                    doctor_id,
+                    str(scheduled_time)
+                )
+
+                st.success("✅ Appointment booked successfully!")
+                st.write(f"Appointment ID: {appointment_id}")
+                st.write(f"Doctor: {selected_doc}")
+                st.write(f"Time: {scheduled_time}")
+
+# VITALS
 elif choice == "Add Vitals":
 
     st.markdown("""
-<div style='padding:1px; background-color:#dfe391; border-radius:10px;'>
-<h2 style='font-size:20px; color:#c77dff;'>❤️ Add Patient Vitals</h2>
-</div>
-""", unsafe_allow_html=True)
+    <div style='padding:1px; background-color:#dfe391; border-radius:10px;'>
+    <h2 style='font-size:20px; color:#c77dff;'>❤️ Add Patient Vitals</h2>
+    </div>
+    """, unsafe_allow_html=True)
 
     col1, col2 = st.columns(2)
 
     with col1:
-        patient_id = st.text_input("Patient ID", key="vitals_patient")
-        temperature = st.number_input("Temperature", key="vitals_temp")
+        patient_id = st.text_input("Patient ID")
+        temperature = st.number_input("Temperature (°C)", step=0.1)
+        bp = st.text_input("Blood Pressure (e.g., 120/80)")
 
     with col2:
-        bp = st.text_input("Blood Pressure (e.g., 120/80)", key="vitals_bp")
-        pulse = st.number_input("Pulse", key="vitals_pulse")
+        pulse = st.number_input("Pulse")
+        spo2 = st.number_input("SpO2 (%)", min_value=0, max_value=100)
+        notes = st.selectbox("Condition Notes", ["Normal", "Fever", "Low temp", "Stable", "Critical"])
 
     if st.button("Save Vitals"):
 
@@ -236,29 +323,34 @@ elif choice == "Add Vitals":
             st.error("Enter patient ID")
 
         elif temperature < 30 or temperature > 45:
-            st.error("⚠️ Temperature seems abnormal")
+            st.error("⚠️ Temperature abnormal")
 
         elif pulse < 40 or pulse > 150:
-            st.error("⚠️ Pulse seems abnormal")
+            st.error("⚠️ Pulse abnormal")
+
+        elif spo2 < 80:
+            st.error("🚨 Very low SpO2!")
 
         else:
-            add_vitals(patient_id, temperature, bp, pulse)
+            from backend import add_vitals, predict_risk
+
+            add_vitals(patient_id, temperature, bp, pulse, spo2, notes)
 
             st.success("✅ Vitals added successfully!")
 
-            # 🔥 AI RISK
+            # 🔥 Risk Prediction
             risk = predict_risk(temperature, bp, pulse)
 
             if risk == "HIGH RISK":
-                st.error("🚨 HIGH RISK detected! Immediate attention needed")
+                st.error("🚨 HIGH RISK detected!")
 
             elif risk == "MILD RISK":
                 st.warning("⚠️ Mild Risk detected")
 
             else:
-                st.success("✅ Patient is Normal") 
+                st.success("✅ Patient is Normal")
             
-#DASHBOARD
+# ================= DASHBOARD =================
 elif choice == "Dashboard":
 
     st.markdown("## 📊 Healthcare Dashboard")
@@ -268,8 +360,12 @@ elif choice == "Dashboard":
 
     patients = pd.read_sql("SELECT * FROM patients", conn)
     appointments = pd.read_sql("SELECT * FROM appointments", conn)
+    vitals = pd.read_sql("SELECT * FROM vitals", conn)
 
-    col1, col2 = st.columns(2)
+    conn.close()
+
+    # ================= KPIs =================
+    col1, col2, col3 = st.columns(3)
 
     with col1:
         st.metric("👨‍⚕️ Total Patients", len(patients))
@@ -277,161 +373,338 @@ elif choice == "Dashboard":
     with col2:
         st.metric("📅 Total Appointments", len(appointments))
 
-    st.write("### 📊 Disease Distribution")
+    with col3:
+        st.metric("❤️ Total Vitals Records", len(vitals))
+
+    # ================= PATIENT ANALYSIS =================
+    st.markdown("### 🧬 Disease Distribution")
+
     if not patients.empty:
-        st.bar_chart(patients['Medical_history'].value_counts())
+        st.bar_chart(patients["medical_history"].value_counts())
 
-    st.write("### 📊 Appointment Status")
+    # ================= APPOINTMENT ANALYSIS =================
+    st.markdown("### 📅 Appointment Status")
+
     if not appointments.empty:
-        st.bar_chart(appointments['Status'].value_counts())
-
-    conn.close()
+        st.bar_chart(appointments["status"].value_counts())
 
     # ================= VITALS =================
-    st.markdown("## 🩺 Patient Vitals History")
-
-    vitals = get_vitals_history()
+    st.markdown("### ❤️ Vitals Trends")
 
     if not vitals.empty:
 
-        st.dataframe(vitals, use_container_width=True)
+        vitals.columns = vitals.columns.str.lower()
+        vitals = vitals.sort_values(by="recorded_at")
 
-        st.write("### 📈 BP Trend")
-        bp_split = vitals["bp"].str.split("/", expand=True).astype(int)
-        st.line_chart(bp_split)
-
-        st.write("### 🌡 Temperature Trend")
+        st.write("🌡 Temperature Trend")
         st.line_chart(vitals["temperature"])
 
-        # ================= ALERTS =================
-        st.markdown("## 🚨 Alerts")
+        st.write("🫁 SpO2 Trend")
+        st.line_chart(vitals["spo2"])
 
-        vitals = vitals.drop_duplicates(subset="patient_id", keep="last")
+        st.write("📈 BP Trend")
+        try:
+            bp_split = vitals["bp"].str.split("/", expand=True).astype(int)
+            st.line_chart(bp_split)
+        except:
+            st.warning("BP format issue")
+
+    # ================= ALERTS =================
+    st.markdown("## 🚨 Critical Alerts")
+
+    if not vitals.empty:
+
+        latest = vitals.drop_duplicates(subset="patient_id", keep="last")
 
         alerts_found = False
 
-        for _, row in vitals.iterrows():
+        for _, row in latest.iterrows():
 
-            patient = row["patient_id"]
             temp = float(row["temperature"])
             pulse = int(row["pulse"])
+            spo2 = int(row["spo2"])
             bp = str(row["bp"])
 
             if temp >= 38:
-                st.error(f"🔥 HIGH FEVER → Patient {patient} ({temp}°C)")
+                st.error(f"🔥 High Fever → {row['patient_id']}")
                 alerts_found = True
 
             if pulse >= 100:
-                st.warning(f"💓 HIGH PULSE → Patient {patient} ({pulse})")
+                st.warning(f"💓 High Pulse → {row['patient_id']}")
                 alerts_found = True
 
             try:
                 systolic = int(bp.split("/")[0])
                 if systolic >= 140:
-                    st.error(f"💔 HIGH BP → Patient {patient} ({bp})")
+                    st.error(f"💔 High BP → {row['patient_id']}")
                     alerts_found = True
             except:
                 pass
 
+            if spo2 < 95:
+                st.error(f"🫁 Low SpO2 → {row['patient_id']}")
+                alerts_found = True
+
         if not alerts_found:
-            st.success("✅ All patients are normal")
+            st.success("✅ All patients stable")
 
 # ================= PATIENT DETAILS =================
 elif choice == "Patient Details":
+
     st.subheader("👤 Patient Details")
+
+    from backend import get_patient, get_patient_vitals, get_patient_appointments
 
     patient_id = st.text_input("Enter Patient ID")
 
     if st.button("Search"):
-        patient = get_patient(patient_id)
 
-        if patient:
-            df = pd.DataFrame([patient], columns=[
-                "Patient ID","User ID","Age","Gender","Blood Group","Allergies","Medical History"
-            ])
-            st.dataframe(df, use_container_width=True)
+        if not patient_id:
+            st.warning("Enter patient ID")
+
         else:
-            st.error("Patient not found")
+            patient = get_patient(patient_id)
 
+            if patient:
 
-#PRESCRIPTION
+                # 👤 BASIC DETAILS
+                st.markdown("### 👤 Basic Info")
+
+                df = pd.DataFrame([patient], columns=[
+                    "Patient ID","User ID","Age","Gender",
+                    "Blood Group","Allergies","Medical History"
+                ])
+                st.dataframe(df, use_container_width=True)
+
+                # ❤️ VITALS
+                st.markdown("### ❤️ Vitals History")
+
+                vitals_df = get_patient_vitals(patient_id)
+
+                if not vitals_df.empty:
+                    vitals_df.columns = vitals_df.columns.str.lower()
+                    st.dataframe(vitals_df, use_container_width=True)
+                else:
+                    st.info("No vitals data found")
+
+                # 📅 APPOINTMENTS
+                st.markdown("### 📅 Appointment History")
+
+                appt_df = get_patient_appointments(patient_id)
+
+                if not appt_df.empty:
+                    appt_df.columns = appt_df.columns.str.lower()
+                    st.dataframe(appt_df, use_container_width=True)
+                else:
+                    st.info("No appointments found")
+
+            else:
+                st.error("Patient not found")
+
+# ================= PRESCRIPTIONS =================
 elif choice == "Prescriptions":
-    st.subheader("💊 Add Prescription")
 
-    patient_id = st.text_input("Patient ID", key="pres_patient")
-    doctor_id = st.text_input("Doctor ID",  value=st.session_state.get("suggested_doctor", ""))
-    medicine = st.text_input("Medicine", key="pres_med")
-    dosage = st.text_input("Dosage", key="pres_dosage")
-    date = st.date_input("Date", key="pres_date")
+    st.subheader("💊 Prescription Management")
 
+    from backend import add_prescription, get_prescriptions, view_doctors
+    import random
+
+    patient_id = st.text_input("Patient ID")
+
+    # Doctor selection
+    doctors = view_doctors()
+
+    if doctors:
+        df_doc = pd.DataFrame(doctors, columns=[
+            "Doctor ID", "Name", "Specialization", "Available Time"
+        ])
+
+        selected_doc = st.selectbox("Select Doctor", df_doc["Name"])
+        doc_row = df_doc[df_doc["Name"] == selected_doc].iloc[0]
+        doctor_id = doc_row["Doctor ID"]
+
+        st.info(f"🩺 {doc_row['Specialization']}")
+    else:
+        doctor_id = st.text_input("Doctor ID")
+
+    # Fields
+    medicine = st.text_input("Medicine")
+    dosage = st.text_input("Dosage")
+    instructions = st.text_area("Instructions")
+
+    fulfilled = st.selectbox("Fulfilled", ["True", "False"])
+
+    # SAVE
     if st.button("Save Prescription"):
-        import sqlite3
-        conn = sqlite3.connect("careconnect.db")
-        cursor = conn.cursor()
 
-        cursor.execute("""
-        INSERT INTO prescriptions VALUES (?, ?, ?, ?, ?, ?)
-        """, ("PR"+patient_id, patient_id, doctor_id, medicine, dosage, str(date)))
+        if not patient_id:
+            st.error("Enter patient ID")
 
-        conn.commit()
-        conn.close()
+        elif not medicine:
+            st.error("Enter medicine")
 
-        st.success("Prescription added!")
+        else:
+            prescription_id = "PR" + str(random.randint(1000, 9999))
 
-    # VIEW HISTORY
+            add_prescription(
+                prescription_id,
+                patient_id,
+                doctor_id,
+                medicine,
+                dosage,
+                instructions,
+                fulfilled
+            )
+
+            st.success("✅ Prescription added!")
+
+    # VIEW
     if st.button("View Prescriptions"):
-        import sqlite3
-        conn = sqlite3.connect("careconnect.db")
-        df = pd.read_sql(f"SELECT * FROM prescriptions WHERE patient_id='{patient_id}'", conn)
-        st.dataframe(df)
-        conn.close()
 
-# UPLOAD REPORT (OCR)
+        if not patient_id:
+            st.warning("Enter patient ID")
+
+        else:
+            df = get_prescriptions(patient_id)
+
+            if not df.empty:
+                df.columns = df.columns.str.lower()
+                st.dataframe(df, use_container_width=True)
+            else:
+                st.info("No prescriptions found")
+
+# =================MEDICAL REPORT OCR  =================
 elif choice == "Upload Report":
+
     st.subheader("📄 Upload Medical Report (OCR)")
+
+    from ocr import extract_text_from_image
+    from backend import save_report
+    import re
 
     uploaded_file = st.file_uploader("Upload Report Image", type=["png", "jpg", "jpeg"])
     patient_id = st.text_input("Enter Patient ID")
 
     if uploaded_file is not None:
+
         st.image(uploaded_file, caption="Uploaded Report", use_container_width=True)
 
-        if st.button("Extract Data"):
-            from PIL import Image
-            import pytesseract
-            pytesseract.pytesseract.tesseract_cmd = r"D:\OCR\tesseract.exe"
-            import re
+        if st.button("Extract & Analyze"):
 
-            img = Image.open(uploaded_file)
-            text = pytesseract.image_to_string(img)
+            text = extract_text_from_image(uploaded_file)
 
             st.text_area("Extracted Text", text, height=200)
 
-            # Extract BP
+            # ================= EXTRACTION =================
+
+            # BP
             bp_match = re.search(r'\b\d{2,3}/\d{2,3}\b', text)
 
-            # Extract Temperature
-            numbers = re.findall(r'\b\d{2,3}\.\d\b', text)
-
-            temperature = None
-            for num in numbers:
-                val = float(num)
-                if 95 <= val <= 105:
-                    temperature = num
-                    break
+            # Temperature (better logic)
+            temp_match = re.search(r'\b(9[5-9]|10[0-5])(\.\d)?\b', text)
 
             bp = bp_match.group() if bp_match else "Not found"
-            temperature = temperature if temperature else "Not found"
+            temperature = temp_match.group() if temp_match else "Not found"
 
             st.success(f"BP: {bp}")
             st.success(f"Temperature: {temperature}")
 
-            # Save to DB
-            if st.button("Save Report Data"):
-                from backend import save_report
+            # ================= ML =================
+            result = final_prediction(text)
+            st.success(result)
 
-                if patient_id:
-                    save_report(patient_id, bp, temperature)
-                    st.success("✅ Report data saved!")
-                else:
-                    st.error("Enter patient ID")
+            # ================= SAVE =================
+            if patient_id:
+
+                save_report(patient_id, bp, temperature, text)
+
+                st.success("✅ Report saved successfully!")
+
+            else:
+                st.error("Enter patient ID")
+
+
+# ================= DISCHARGE SUMMARY =================
+elif choice == "Discharge Summary":
+
+    st.subheader("📋 Discharge Summary Analysis")
+
+    import pandas as pd
+    from rag import extract_condition, extract_doctor
+
+    try:
+        df = pd.read_csv("Discharge_summary.csv")
+
+        # 🔥 CLEAN COLUMN NAMES (important)
+        df.columns = df.columns.str.lower()
+
+        # 🔥 APPLY NLP
+        df["condition"] = df["summary_text"].apply(extract_condition)
+
+        # 🔥 DOCTOR MAPPING
+        df["recommended_doctor"] = df.apply(
+            lambda row: extract_doctor(row["summary_text"], row["condition"]),
+            axis=1
+        )
+
+        # ✅ SHOW RESULT
+        st.dataframe(df, use_container_width=True)
+
+        # ================= INSIGHTS =================
+        st.markdown("### 📊 Condition Distribution")
+        st.bar_chart(df["condition"].value_counts())
+
+        st.markdown("### 👨‍⚕️ Doctor Distribution")
+        st.bar_chart(df["recommended_doctor"].value_counts())
+
+    except Exception as e:
+        st.error(f"Error loading discharge summary: {e}")
+
+# ================= ADMIN PANEL =================
+elif choice == "Admin Panel":
+
+    st.subheader("🛠 Admin Dashboard")
+
+    import sqlite3
+    import pandas as pd
+
+    conn = sqlite3.connect("careconnect.db")
+
+    # ================= DATABASE TABLES =================
+    st.markdown("### 👤 Patients")
+    st.dataframe(pd.read_sql("SELECT * FROM patients", conn), use_container_width=True)
+
+    st.markdown("### 👨‍⚕️ Doctors")
+    st.dataframe(pd.read_sql("SELECT * FROM doctors", conn), use_container_width=True)
+
+    st.markdown("### 📅 Appointments")
+    st.dataframe(pd.read_sql("SELECT * FROM appointments", conn), use_container_width=True)
+
+    st.markdown("### 💊 Prescriptions")
+    st.dataframe(pd.read_sql("SELECT * FROM prescriptions", conn), use_container_width=True)
+
+    st.markdown("### ❤️ Vitals")
+    st.dataframe(pd.read_sql("SELECT * FROM vitals", conn), use_container_width=True)
+
+    conn.close()
+
+    # ================= ADMIN LOGS (CSV) =================
+    st.markdown("### 📜 Admin Activity Logs")
+
+    try:
+        logs_df = pd.read_csv("Admins.csv")
+
+        # clean column names
+        logs_df.columns = logs_df.columns.str.lower()
+
+        st.dataframe(logs_df, use_container_width=True)
+
+        # ================= INSIGHTS =================
+        st.markdown("### 📊 Actions Distribution")
+        st.bar_chart(logs_df["action"].value_counts())
+
+        st.markdown("### 🎯 Target Entity Distribution")
+        st.bar_chart(logs_df["target_entity"].value_counts())
+
+    except:
+        st.warning("Admins.csv not found")
