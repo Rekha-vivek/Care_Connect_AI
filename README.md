@@ -214,21 +214,7 @@ Modules included:
 ---
 
 ## 🏗 7. Architecture Overview
-
-```text
-User Input / Report Image
-        ↓
-   NLP Processing / OCR
-        ↓
- Feature Extraction (Vectorization)
-        ↓
- Machine Learning Model
-        ↓
- Doctor Recommendation
-        ↓
- Database Storage (SQLite)
-        ↓
- Streamlit UI Display
+User Input / Report Image > NLP Processing / OCR > Feature Extraction (Vectorization) > Machine Learning Model > Doctor Recommendation > Database Storage (SQLite) > Streamlit UI Display
 
 ---
 
