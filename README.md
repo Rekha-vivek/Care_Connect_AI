@@ -214,7 +214,7 @@ Modules included:
 ---
 
 ## 🏗 7. Architecture Overview
-```text
+
 User Input / Report Image
 ↓
 NLP Processing / OCR
@@ -228,8 +228,6 @@ Doctor Recommendation
 Database Storage (SQLite)
 ↓
 Streamlit UI Display
-
----
 
 ---
 
