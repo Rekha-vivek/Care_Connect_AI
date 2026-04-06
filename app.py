@@ -125,7 +125,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 
-menu = ["Chatbot", "View Doctors", "Book Appointment", "Add Vitals","Dashboard","Patient Details","Prescriptions","Upload Report", "Medical Reports",        # ✅ NEW
+menu = ["Chatbot", "View Doctors", "Book Appointment", "Add Vitals","Dashboard","Patient Details","Prescriptions","Upload Report",
     "Discharge Summary","Admin Panel"]  
 choice = st.sidebar.selectbox("Select Option", menu)
 

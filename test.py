@@ -1,7 +1,5 @@
-from backend import view_doctors, book_appointment, get_patient
+from ocr import extract_text_from_image
+text = extract_text_from_image("medical_report.png")
 
-print(view_doctors())
-
-book_appointment("A100", "P001", "D001", "2026-03-26")
-
-print(get_patient("P001"))
+print("===== OCR OUTPUT =====")
+print(text)
